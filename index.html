@@ -1,0 +1,326 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111111">
+<title>Sérgio Express</title>
+<style>
+:root{--bg:#111;--panel:#202020;--yellow:#ffd400;--text:#fff;--muted:#bbb;--line:#3b3b3b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{padding:22px 18px 15px;background:#080808;border-bottom:3px solid var(--yellow)}
+header h1{margin:0;color:var(--yellow);font-size:25px}
+header p{margin:5px 0 0;color:var(--muted);font-size:13px}
+nav{display:flex;gap:6px;padding:10px;overflow-x:auto;background:#171717;position:sticky;top:0;z-index:2}
+nav button{flex:1;min-width:max-content;padding:11px 13px;border:1px solid #444;border-radius:9px;background:#252525;color:white;font-weight:700}
+nav button.active{background:var(--yellow);color:#111;border-color:var(--yellow)}
+main{max-width:760px;margin:auto;padding:14px}
+section{display:none}
+section.active{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:13px}
+h2{font-size:19px;margin:0 0 14px}
+h3{font-size:15px;margin:18px 0 10px;color:var(--yellow)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+input,select{width:100%;min-width:0;padding:12px;background:#111;color:white;border:1px solid #505050;border-radius:8px;font-size:16px}
+button.action{width:100%;padding:14px;border:0;border-radius:9px;background:var(--yellow);color:#111;font-weight:800;font-size:16px;margin-top:12px}
+button.secondary{padding:10px;border:1px solid #555;border-radius:8px;background:#292929;color:white}
+.metric{background:#121212;border-radius:10px;padding:12px;margin-top:8px}
+.metric span{display:block;color:var(--muted);font-size:13px}
+.metric strong{display:block;font-size:22px;margin-top:5px;color:var(--yellow);overflow-wrap:anywhere}
+.result{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.small{font-size:12px;color:var(--muted);line-height:1.5}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{text-align:left;padding:9px 5px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--yellow)}
+.tablewrap{overflow-x:auto}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.actions button{flex:1}
+hr{border:0;border-top:1px solid var(--line);margin:17px 0}
+@media(max-width:420px){.grid{grid-template-columns:1fr 1fr}main{padding:10px}.card{padding:13px}.metric strong{font-size:19px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚕 SÉRGIO EXPRESS</h1>
+  <p>Gestão de corridas, custos e metas do taxista</p>
+</header>
+
+<nav>
+  <button class="active" data-tab="corrida">Corrida</button>
+  <button data-tab="metas">Metas</button>
+  <button data-tab="custos">Configurações</button>
+  <button data-tab="historico">Histórico</button>
+</nav>
+
+<main>
+<section id="corrida" class="active">
+  <div class="card">
+    <h2>Calcular corrida</h2>
+    <div class="grid">
+      <div><label>Km até buscar passageiro</label><input id="pickup" type="number" min="0" step=".1" value="2"></div>
+      <div><label>Km com passageiro</label><input id="passenger" type="number" min="0" step=".1" value="10"></div>
+      <div><label>Km de retorno vazio</label><input id="returnKm" type="number" min="0" step=".1" value="0"></div>
+      <div><label>Pedágio (R$)</label><input id="toll" type="number" min="0" step=".01" value="0"></div>
+      <div><label>Outros custos diretos (R$)</label><input id="extra" type="number" min="0" step=".01" value="0"></div>
+      <div><label>Tempo parado (minutos)</label><input id="stopped" type="number" min="0" step="1" value="0"></div>
+      <div><label>Bandeira do taxímetro</label>
+        <select id="band"><option value="1">Bandeira 1</option><option value="2">Bandeira 2</option></select>
+      </div>
+    </div>
+    <button class="action" id="calculate">CALCULAR CORRIDA</button>
+  </div>
+
+  <div class="card" id="rideResults" hidden>
+    <h2>Resultado estimado</h2>
+    <div class="result">
+      <div class="metric"><span>Distância total considerada</span><strong id="rKm">—</strong></div>
+      <div class="metric"><span>Custo estimado da corrida</span><strong id="rCost">—</strong></div>
+      <div class="metric"><span>Preço sugerido</span><strong id="rPrice">—</strong></div>
+      <div class="metric"><span>Estimativa do taxímetro</span><strong id="rMeter">—</strong></div>
+    </div>
+    <p class="small" id="rDetail"></p>
+    <button class="action" id="saveRide">SALVAR NO HISTÓRICO</button>
+    <p class="small">O preço sugerido é uma referência de custo e lucro, não uma tarifa oficial. Confirme sempre as regras aplicáveis à corrida.</p>
+  </div>
+</section>
+
+<section id="metas">
+  <div class="card">
+    <h2>Suas metas financeiras</h2>
+    <p class="small">Os valores são calculados a partir das configurações atuais.</p>
+    <div class="result">
+      <div class="metric"><span>Custos mensais estimados</span><strong id="mCosts">—</strong></div>
+      <div class="metric"><span>Faturamento mensal necessário</span><strong id="mGoal">—</strong></div>
+      <div class="metric"><span>Meta por dia trabalhado</span><strong id="mDaily">—</strong></div>
+      <div class="metric"><span>Meta por km rodado</span><strong id="mKm">—</strong></div>
+    </div>
+    <hr>
+    <h3>Composição mensal</h3>
+    <div id="mBreakdown" class="small"></div>
+    <button class="action" id="refreshGoals">ATUALIZAR METAS</button>
+  </div>
+</section>
+
+<section id="custos">
+  <div class="card">
+    <h2>Configurações do taxista</h2>
+    <p class="small">Altere os números para representar sua realidade. Os valores ficam salvos neste navegador.</p>
+    <h3>Metas de trabalho</h3>
+    <div class="grid">
+      <div><label>Renda pessoal desejada/mês (R$)</label><input id="income" type="number" min="0" step="100" value="5000"></div>
+      <div><label>Dias trabalhados/mês</label><input id="days" type="number" min="1" max="31" value="26"></div>
+      <div><label>Km totais/mês</label><input id="monthlyKm" type="number" min="1" value="3380"></div>
+    </div>
+    <h3>Combustível e operação</h3>
+    <div class="grid">
+      <div><label>Combustível</label><select id="fuelType"><option>Etanol</option><option>Gasolina</option><option>GNV</option><option>Outro</option></select></div>
+      <div><label>Preço por litro (R$)</label><input id="fuelPrice" type="number" min="0" step=".01" value="3.50"></div>
+      <div><label>Consumo real (km/L)</label><input id="consumption" type="number" min=".1" step=".01" value="6.59"></div>
+      <div><label>Reserva manutenção/pneus (R$/km)</label><input id="maintenance" type="number" min="0" step=".05" value=".50"></div>
+      <div><label>Lucro desejado por corrida (R$)</label><input id="profit" type="number" min="0" step="5" value="15"></div>
+    </div>
+    <h3>Custos fixos mensais</h3>
+    <div class="grid">
+      <div><label>Seguro (R$)</label><input id="insurance" type="number" min="0" step=".01" value="209.64"></div>
+      <div><label>Financiamento (R$)</label><input id="financing" type="number" min="0" step=".01" value="1745.65"></div>
+      <div><label>Licenciamento/taxas (R$)</label><input id="licensing" type="number" min="0" step=".01" value="14.50"></div>
+      <div><label>MEI (R$)</label><input id="mei" type="number" min="0" step=".01" value="86.05"></div>
+      <div><label>Outras despesas mensais (R$)</label><input id="otherFixed" type="number" min="0" step=".01" value="110"></div>
+      <div><label>IPVA (R$)</label><input id="ipva" type="number" min="0" step=".01" value="0"></div>
+      <div><label>Lavagem mensal (R$)</label><input id="washing" type="number" min="0" step=".01" value="0"></div>
+    </div>
+    <h3>Tarifa de referência do taxímetro</h3>
+    <p class="small">Preencha conforme a tabela oficial vigente da sua cidade. Os números abaixo são apenas valores iniciais editáveis e não foram confirmados como tarifa oficial atual.</p>
+    <div class="grid">
+      <div><label>Bandeirada (R$)</label><input id="flagDrop" type="number" min="0" step=".01" value="6.55"></div>
+      <div><label>Bandeira 1 (R$/km)</label><input id="tariff1" type="number" min="0" step=".01" value="4.80"></div>
+      <div><label>Bandeira 2 (R$/km)</label><input id="tariff2" type="number" min="0" step=".01" value="6.24"></div>
+      <div><label>Hora parada (R$/hora)</label><input id="hourly" type="number" min="0" step=".01" value="55.50"></div>
+    </div>
+    <button class="action" id="saveSettings">SALVAR CONFIGURAÇÕES</button>
+    <p id="settingsStatus" class="small" role="status"></p>
+  </div>
+</section>
+
+<section id="historico">
+  <div class="card">
+    <h2>Histórico de corridas</h2>
+    <p class="small">Os registros ficam armazenados localmente neste navegador. Exporte uma cópia para não depender apenas do aparelho.</p>
+    <div class="result">
+      <div class="metric"><span>Corridas registradas</span><strong id="hCount">0</strong></div>
+      <div class="metric"><span>Preços sugeridos somados</span><strong id="hTotal">R$ 0,00</strong></div>
+    </div>
+    <div class="actions">
+      <button class="secondary" id="exportCsv">Exportar CSV</button>
+      <button class="secondary" id="clearHistory">Apagar histórico</button>
+    </div>
+    <hr>
+    <div class="tablewrap">
+      <table><thead><tr><th>Data</th><th>Km</th><th>Custo</th><th>Sugestão</th></tr></thead>
+      <tbody id="historyRows"><tr><td colspan="4">Nenhuma corrida salva.</td></tr></tbody></table>
+    </div>
+  </div>
+</section>
+
+<p class="small">Sérgio Express 1.0 • Ferramenta de estimativa financeira. Confira os valores, tarifas e exigências locais antes de tomar decisões.</p>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const configIds = [
+'income','days','monthlyKm','fuelType','fuelPrice','consumption','maintenance',
+'profit','insurance','financing','licensing','mei','otherFixed','ipva','washing',
+'flagDrop','tariff1','tariff2','hourly'
+];
+const defaults = {};
+configIds.forEach(id => defaults[id] = $(id).value);
+
+function num(id){ return Math.max(0, Number($(id).value) || 0); }
+function money(value){
+ return (Number.isFinite(value) ? value : 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+function getConfig(){
+ const c = {};
+ configIds.forEach(id => c[id] = $(id).value);
+ return c;
+}
+function saveSettings(silent=false){
+ try{
+  localStorage.setItem('sergioExpressConfig',JSON.stringify(getConfig()));
+  $('settingsStatus').textContent = silent ? '' : 'Configurações salvas neste aparelho.';
+  updateGoals();
+ }catch(e){
+  $('settingsStatus').textContent = 'Não foi possível salvar neste navegador.';
+ }
+}
+function loadSettings(){
+ try{
+  const c = JSON.parse(localStorage.getItem('sergioExpressConfig') || '{}');
+  configIds.forEach(id => { if(c[id] !== undefined) $(id).value = c[id]; });
+ }catch(e){}
+}
+function fixedCosts(){
+ return num('insurance')+num('financing')+num('licensing')+num('mei')+
+ num('otherFixed')+num('ipva')+num('washing');
+}
+function monthlyNumbers(){
+ const km = num('monthlyKm');
+ const fuel = num('consumption') > 0 ? km / num('consumption') * num('fuelPrice') : 0;
+ const maintenance = km * num('maintenance');
+ const fixed = fixedCosts();
+ const total = fixed + fuel + maintenance;
+ const target = total + num('income');
+ return {km,fuel,maintenance,fixed,total,target};
+}
+function updateGoals(){
+ const m = monthlyNumbers();
+ $('mCosts').textContent = money(m.total);
+ $('mGoal').textContent = money(m.target);
+ $('mDaily').textContent = money(num('days') ? m.target / num('days') : 0);
+ $('mKm').textContent = money(m.km ? m.target / m.km : 0);
+ $('mBreakdown').innerHTML =
+  'Custos fixos: <b>'+money(m.fixed)+'</b><br>'+
+  'Combustível estimado: <b>'+money(m.fuel)+'</b><br>'+
+  'Reserva de manutenção e pneus: <b>'+money(m.maintenance)+'</b><br>'+
+  'Renda pessoal pretendida: <b>'+money(num('income'))+'</b><br>'+
+  'Meta diária considera '+num('days')+' dias de trabalho.';
+}
+let currentRide = null;
+function calculateRide(){
+ const pickup = num('pickup'), passenger = num('passenger'), ret = num('returnKm');
+ const km = pickup + passenger + ret;
+ const consumption = num('consumption');
+ const fuel = consumption > 0 ? km / consumption * num('fuelPrice') : 0;
+ const maintenance = km * num('maintenance');
+ const fixedAllocation = num('monthlyKm') > 0 ? km * fixedCosts() / num('monthlyKm') : 0;
+ const direct = num('toll') + num('extra');
+ const cost = fuel + maintenance + fixedAllocation + direct;
+ const suggested = cost + num('profit');
+ const rate = $('band').value === '2' ? num('tariff2') : num('tariff1');
+ const meter = num('flagDrop') + passenger * rate + num('stopped') / 60 * num('hourly');
+ currentRide = {
+  date:new Date().toLocaleString('pt-BR'),
+  km, pickup, passenger, ret, cost, suggested, meter,
+  fuel, maintenance, fixedAllocation, direct,
+  band:$('band').value, stopped:num('stopped')
+ };
+ $('rKm').textContent = km.toLocaleString('pt-BR',{maximumFractionDigits:2})+' km';
+ $('rCost').textContent = money(cost);
+ $('rPrice').textContent = money(suggested);
+ $('rMeter').textContent = money(meter);
+ $('rDetail').textContent =
+  'Combustível: '+money(fuel)+
+  ' • Manutenção: '+money(maintenance)+
+  ' • Rateio de custos fixos: '+money(fixedAllocation)+
+  ' • Pedágio e extras: '+money(direct)+
+  '. A estimativa do taxímetro usa apenas os km com passageiro, bandeirada e tempo parado.';
+ $('rideResults').hidden = false;
+}
+function getHistory(){
+ try{return JSON.parse(localStorage.getItem('sergioExpressHistory') || '[]');}
+ catch(e){return [];}
+}
+function renderHistory(){
+ const rows = getHistory();
+ $('hCount').textContent = rows.length;
+ $('hTotal').textContent = money(rows.reduce((sum,r)=>sum+r.suggested,0));
+ $('historyRows').innerHTML = '';
+ if(!rows.length){
+  $('historyRows').innerHTML = '<tr><td colspan="4">Nenhuma corrida salva.</td></tr>';
+  return;
+ }
+ rows.slice().reverse().forEach(r=>{
+  const tr = document.createElement('tr');
+  [r.date, r.km.toLocaleString('pt-BR')+' km', money(r.cost), money(r.suggested)].forEach(v=>{
+   const td=document.createElement('td'); td.textContent=v; tr.appendChild(td);
+  });
+  $('historyRows').appendChild(tr);
+ });
+}
+function saveRide(){
+ if(!currentRide){calculateRide();}
+ const rows = getHistory();
+ rows.push(currentRide);
+ try{
+  localStorage.setItem('sergioExpressHistory',JSON.stringify(rows));
+  renderHistory();
+  alert('Corrida salva no histórico deste aparelho.');
+ }catch(e){alert('Não foi possível salvar. Exporte ou libere espaço no navegador.');}
+}
+function exportCsv(){
+ const rows=getHistory();
+ if(!rows.length){alert('Ainda não há corridas para exportar.');return;}
+ const headers=['Data','Km total','Km busca','Km passageiro','Km retorno vazio','Custo estimado','Preço sugerido','Taxímetro estimado','Bandeira'];
+ const csv=[headers,...rows.map(r=>[r.date,r.km,r.pickup,r.passenger,r.ret,r.cost.toFixed(2),r.suggested.toFixed(2),r.meter.toFixed(2),r.band])]
+ .map(row=>row.map(v=>'"'+String(v ?? '').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+ const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download='sergio-express-corridas.csv';a.click();
+ URL.revokeObjectURL(url);
+}
+document.querySelectorAll('nav button').forEach(btn=>btn.addEventListener('click',()=>{
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b===btn));
+ document.querySelectorAll('main section').forEach(s=>s.classList.toggle('active',s.id===btn.dataset.tab));
+ if(btn.dataset.tab==='metas')updateGoals();
+ if(btn.dataset.tab==='historico')renderHistory();
+}));
+$('calculate').addEventListener('click',calculateRide);
+$('saveRide').addEventListener('click',saveRide);
+$('saveSettings').addEventListener('click',()=>saveSettings(false));
+$('refreshGoals').addEventListener('click',updateGoals);
+$('exportCsv').addEventListener('click',exportCsv);
+$('clearHistory').addEventListener('click',()=>{
+ if(confirm('Tem certeza de que deseja apagar todo o histórico salvo neste aparelho?')){
+  localStorage.removeItem('sergioExpressHistory');renderHistory();
+ }
+});
+configIds.forEach(id=>$(id).addEventListener('change',()=>saveSettings(true)));
+loadSettings();
+updateGoals();
+renderHistory();
+</script>
+</body>
+</html>
